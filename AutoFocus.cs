@@ -187,7 +187,7 @@ namespace LensAF
                                         Token, Progress);
                                     detection = await PrepareImageForStarHFR(data);
                                     LensAFVM.Instance.AutoFocusIsRunning = false;
-                                    ReportUpdate($"Final HFR value: {detection.AverageHFR}");
+                                    ReportUpdate($"Final HFR value: {detection.AverageHFR:0.##}");
                                     PublicToken.Cancel();
                                 }
                                 else
@@ -228,7 +228,7 @@ namespace LensAF
             {
                 LensAFVM.Instance.LastAF = LastAF.ToString("HH:m");
             }
-            ReportUpdate(string.Empty);
+//            ReportUpdate(string.Empty);
             return res;
         }
 
