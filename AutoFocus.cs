@@ -95,6 +95,7 @@ namespace LensAF
             FocusPoint FinalFocusPoint = null;
             try
             {
+                double lastAverageHFR = 10000d;
                 // Needed Variables
                 PublicToken = new CancellationTokenSource();
 
@@ -103,7 +104,7 @@ namespace LensAF
                 // LiveView Loop
                 await liveViewEnumerable.ForEachAsync(async _ =>
                 {
-                    if (iteration == 0)
+                    if (iteration == 0 && Method != AutoFocusLogic.ONEWAY)
                     {
                         ReportUpdate("Calibrating lens");
                         CalibrateLens(canon, settings);
@@ -119,10 +120,20 @@ namespace LensAF
                         {
                             DriveFocus(canon, FocusDirection.Far);
                         }
+                        // get new image stat at this final focal point
+                        IRenderedImage data = await imaging.CaptureAndPrepareImage(new CaptureSequence(
+                            settings.ExposureTime,
+                            "AF Frame",
+                            new FilterInfo(),
+                            new BinningMode(1, 1),
+                            1),
+                            new PrepareImageParameters(true),
+                            Token, Progress);
+                        StarDetectionResult detection = await PrepareImageForStarHFR(data);
                         Focused = true;
                         LensAFVM.Instance.AutoFocusIsRunning = false;
 
-                        ReportUpdate(string.Empty);
+                        ReportUpdate($"Final HFR value: {detection.AverageHFR}");
                         PublicToken.Cancel();
                     }
 
@@ -151,14 +162,41 @@ namespace LensAF
                             new PrepareImageParameters(true),
                             Token, Progress);
 
-                        if (Method == AutoFocusLogic.STARHFR)
+                        if (Method == AutoFocusLogic.STARHFR || Method == AutoFocusLogic.ONEWAY)
                         {
                             StarDetectionResult detection = await PrepareImageForStarHFR(data);
                             FocusPoints.Add(new FocusPoint(detection, iteration));
 
                             AddToPlot(detection.AverageHFR, iteration);
+                            if (Method == AutoFocusLogic.ONEWAY)
+                            {
+                                if (detection.AverageHFR > lastAverageHFR)
+                                {
+                                    ReportUpdate("Finishing Autofocus");
+                                    FinalFocusPoint = FocusPoints[FocusPoints.Count-2];
+                                    DriveFocus(canon, FocusDirection.Far);
+                                    Focused = true;
+                                    // get new image stat at this final focal point
+                                    data = await imaging.CaptureAndPrepareImage(new CaptureSequence(
+                                        settings.ExposureTime,
+                                        "AF Frame",
+                                        new FilterInfo(),
+                                        new BinningMode(1, 1),
+                                        1),
+                                        new PrepareImageParameters(true),
+                                        Token, Progress);
+                                    detection = await PrepareImageForStarHFR(data);
+                                    LensAFVM.Instance.AutoFocusIsRunning = false;
+                                    ReportUpdate($"Final HFR value: {detection.AverageHFR}");
+                                    PublicToken.Cancel();
+                                }
+                                else
+                                {
+                                    lastAverageHFR = detection.AverageHFR;
+                                }
+                            }
                         }
-                        else
+                        else if (Method == AutoFocusLogic.CONTRAST)
                         {
                             ContrastDetectionResult detection = PrepareImageForContrast(data);
                             FocusPoints.Add(new FocusPoint(detection, iteration));
@@ -204,6 +242,10 @@ namespace LensAF
             if (Settings.Default.AutoFocusLogic == 0)
             {
                 return AutoFocusLogic.STARHFR;
+            }
+            else if (Settings.Default.AutoFocusLogic == 2)
+            {
+                return AutoFocusLogic.ONEWAY;
             }
             return AutoFocusLogic.CONTRAST;
         }

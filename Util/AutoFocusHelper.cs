@@ -87,6 +87,7 @@ namespace LensAF.Util
     public enum AutoFocusLogic
     {
         STARHFR,
-        CONTRAST
+        CONTRAST,
+        ONEWAY
     }
 }

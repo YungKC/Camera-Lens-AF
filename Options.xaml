@@ -27,6 +27,7 @@
                     SelectedIndex="{Binding AutoFocusLogic, Mode=TwoWay}">
                     <ComboBoxItem HorizontalAlignment="Stretch" Content="Star HFR (recommended)" />
                     <ComboBoxItem HorizontalAlignment="Stretch" Content="Contrast (experimental)" />
+                    <ComboBoxItem HorizontalAlignment="Stretch" Content="One Way Focus (experimental)" />
                 </ComboBox>
             </StackPanel>
 
