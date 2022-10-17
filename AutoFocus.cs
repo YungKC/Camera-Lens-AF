@@ -654,7 +654,7 @@ namespace LensAF
         {
             for (int i = 0; i < 5; i++)
             {
-                EDSDK.EdsSendCommand(ptr, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far);
+                EDSDK.EdsSendCommand(ptr, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far3);
                 Thread.Sleep(350); // Let Focus Settle, EDSDK does not wait for the lens to finish moving the focus
             }
             for (int i = 0; i < settings.InitialOffset; i++)
