@@ -25,6 +25,7 @@ using NINA.WPF.Base.ViewModel;
 using NINA.WPF.Base.ViewModel.Equipment.Camera;
 using OxyPlot;
 using OxyPlot.Series;
+using OxyPlot.Wpf;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
@@ -56,10 +57,10 @@ namespace LensAF.Dockable
             set
             {
                 _plotFocusPoints = value;
-                RaisePropertyChanged();
+                RaisePropertyChanged("PlotFocusPoints");
             }
         }
-
+  
         private List<ScatterErrorPoint> _plotDots;
         public List<ScatterErrorPoint> PlotDots
         {
@@ -126,15 +127,7 @@ namespace LensAF.Dockable
             RunAF = new AsyncCommand<bool>(async () =>
             {
 
-                if (!Validate())
-                {
-                    foreach (string issue in Issues)
-                    {
-                        Notification.ShowError($"Can't start AutoFocus: {issue}");
-                        Logger.Error($"Can't start AutoFocus: {issue}");
-                    }
-                }
-                else
+                if (Validate())
                 {
                     ClearCharts();
                     ActiveToken = new CancellationTokenSource();
@@ -142,6 +135,14 @@ namespace LensAF.Dockable
                     AutoFocusResult result = await new AutoFocus(ActiveToken.Token, new Progress<ApplicationStatus>(p => Status = p), profileService).RunAF(Camera, Imaging, new AutoFocusSettings());
                     AutoFocusIsRunning = false;
                     return result.Successfull;
+                }
+                else
+                {
+                    foreach (string issue in Issues)
+                    {
+                        Notification.ShowError($"Can't start AutoFocus: {issue}");
+                        Logger.Error($"Can't start AutoFocus: {issue}");
+                    }
                 }
 
                 return false;

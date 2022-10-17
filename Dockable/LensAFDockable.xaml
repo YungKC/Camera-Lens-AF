@@ -22,7 +22,7 @@
         </DataTemplate.Resources>
 
         <Grid>
-            <oxy:Plot
+            <oxy:Plot x:Name="AFPlot" 
                 Margin="5,5,5,150"
                 Background="{StaticResource BackgroundBrush}"
                 PlotAreaBackground="{StaticResource BackgroundBrush}"
@@ -80,7 +80,7 @@
             <StackPanel VerticalAlignment="Bottom" Orientation="Vertical">
 
                 <StackPanel Margin="5,0,0,0" Orientation="Horizontal">
-                    <TextBlock FontSize="19" Text="Last AF: " />
+                    <TextBlock FontSize="19" Text="Last AF Time: " />
                     <TextBlock FontSize="19" Text="{Binding LastAF}" />
                 </StackPanel>
 

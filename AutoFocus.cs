@@ -104,22 +104,38 @@ namespace LensAF
                 // LiveView Loop
                 await liveViewEnumerable.ForEachAsync(async _ =>
                 {
-                    if (iteration == 0 && Method != AutoFocusLogic.ONEWAY)
+                    if (iteration == 0)
                     {
                         ReportUpdate("Calibrating lens");
-                        CalibrateLens(canon, settings);
+                        if (Method != AutoFocusLogic.ONEWAY)
+                        {
+                            CalibrateLens(canon, settings);
+                        }
+                        else
+                        {
+                            for (int i = 0; i < settings.InitialOffset; i++)
+                            {
+                                DriveFocus(canon, FocusDirection.Near);
+                                Thread.Sleep(500);
+                            }
+                        }
                     }
 
                     // All Focuspoints are collected: Compute Final Focus Point
                     if (iteration == settings.Iterations - 1)
                     {
                         ReportUpdate("Finishing Autofocus");
-                        int iterations = DetermineFinalFocusPoint(FocusPoints, settings.Iterations);
-                        FinalFocusPoint = FocusPoints[settings.Iterations - iterations];
-                        for (int i = 0; i < iterations; i++)
+                        if (Method != AutoFocusLogic.ONEWAY)
                         {
-                            DriveFocus(canon, FocusDirection.Far);
+                            int iterations = DetermineFinalFocusPoint(FocusPoints, settings.Iterations);
+                            FinalFocusPoint = FocusPoints[settings.Iterations - iterations];
+                            for (int i = 0; i < iterations; i++)
+                            {
+                                DriveFocus(canon, FocusDirection.Far);
+                                Thread.Sleep(500);
+                            }
                         }
+
                         // get new image stat at this final focal point
                         IRenderedImage data = await imaging.CaptureAndPrepareImage(new CaptureSequence(
                             settings.ExposureTime,
@@ -148,7 +164,16 @@ namespace LensAF
                     {
                         // Drive Focus
                         ReportUpdate($"Moving focus, iteration {iteration + 1}");
-                        DriveFocus(canon, FocusDirection.Near);
+                        if (Method == AutoFocusLogic.ONEWAY)
+                        {
+                            DriveFocus(canon, FocusDirection.Far);
+                        }
+                        else
+                        {
+                            DriveFocus(canon, FocusDirection.Near);
+                        }
+                        Thread.Sleep(500);
+
                         Logger.Debug($"Moving Focus... iteration {iteration}");
 
                         // Download and Prepare Image
@@ -174,7 +199,7 @@ namespace LensAF
                                 {
                                     ReportUpdate("Finishing Autofocus");
                                     FinalFocusPoint = FocusPoints[FocusPoints.Count-2];
-                                    DriveFocus(canon, FocusDirection.Far);
+                                    DriveFocus(canon, FocusDirection.Near);
                                     Focused = true;
                                     // get new image stat at this final focal point
                                     data = await imaging.CaptureAndPrepareImage(new CaptureSequence(
@@ -228,7 +253,7 @@ namespace LensAF
             {
                 LensAFVM.Instance.LastAF = LastAF.ToString("HH:m");
             }
-//            ReportUpdate(string.Empty);
+            ReportUpdate(string.Empty);
             return res;
         }
 
@@ -323,7 +348,7 @@ namespace LensAF
                     {
                         EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near2);
                     }
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                 }
                 if (Settings.Default.StepSizeLogic == 1 && Settings.Default.StepSizeBig > 0)
                 {
@@ -337,7 +362,7 @@ namespace LensAF
                         {
                             EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
                         }
-                        Thread.Sleep(200);
+                        Thread.Sleep(500);
                     }
                 }
                 else
@@ -352,7 +377,7 @@ namespace LensAF
                         {
                             EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
                         }
-                        Thread.Sleep(200);
+                        Thread.Sleep(500);
                     }
                 }
                 return;
@@ -373,17 +398,17 @@ namespace LensAF
                 if (direction == FocusDirection.Near)
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200); // Required in oder to mix multiple step sizes
+                    Thread.Sleep(500); // Required in oder to mix multiple step sizes
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
                 }
                 else
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
                 }
             }
@@ -392,25 +417,25 @@ namespace LensAF
                 if (direction == FocusDirection.Near)
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
                 }
                 else
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
                 }
             }
@@ -419,29 +444,29 @@ namespace LensAF
                 if (direction == FocusDirection.Near)
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near2);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
                 }
                 else
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far2);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
                 }
             }
@@ -450,21 +475,19 @@ namespace LensAF
                 if (direction == FocusDirection.Near)
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near2);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
                 }
                 else
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far2);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
-                    EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
                 }
             }
@@ -484,21 +507,21 @@ namespace LensAF
                 if (direction == FocusDirection.Near)
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near2);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
                 }
                 else
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far2);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
                 }
             }
@@ -507,29 +530,29 @@ namespace LensAF
                 if (direction == FocusDirection.Near)
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near2);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
                 }
                 else
                 {
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far2);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                     EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
                 }
             }
@@ -545,7 +568,7 @@ namespace LensAF
                     {
                         EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near2);
                     }
-                    Thread.Sleep(200);
+                    Thread.Sleep(500);
                 }
                 if (Settings.Default.StepSizeLogic == 1 && Settings.Default.StepSizeBig > 0)
                 {
@@ -559,7 +582,7 @@ namespace LensAF
                         {
                             EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far1);
                         }
-                        Thread.Sleep(200);
+                        Thread.Sleep(500);
                     }
                 }
                 else
@@ -574,7 +597,7 @@ namespace LensAF
                         {
                             EDSDK.EdsSendCommand(cam, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Near1);
                         }
-                        Thread.Sleep(200);
+                        Thread.Sleep(500);
                     }
                 }
             }
@@ -629,9 +652,9 @@ namespace LensAF
 
         private void CalibrateLens(IntPtr ptr, AutoFocusSettings settings)
         {
-            for (int i = 0; i < 15; i++)
+            for (int i = 0; i < 5; i++)
             {
-                EDSDK.EdsSendCommand(ptr, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far3);
+                EDSDK.EdsSendCommand(ptr, EDSDK.CameraCommand_DriveLensEvf, (int)EDSDK.EvfDriveLens_Far);
                 Thread.Sleep(350); // Let Focus Settle, EDSDK does not wait for the lens to finish moving the focus
             }
             for (int i = 0; i < settings.InitialOffset; i++)
